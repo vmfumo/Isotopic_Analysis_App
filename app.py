@@ -1,10 +1,13 @@
+import os
+os.environ["RDKIT_HEADLESS"] = "True"  # Enforce headless rendering before RDKit initialization
+
 import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import nnls  # Linear optimization package for deconvolution
-import analysis_engine as engine  # Hooks into your calculation module
-from rdkit.Chem import Draw      # RDKit vector layout rendering engine
+from scipy.optimize import nnls
+import analysis_engine as engine
+from rdkit.Chem import Draw
 
 # Configure matplotlib to render cleanly as background canvas surfaces
 import matplotlib

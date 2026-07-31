@@ -6,7 +6,18 @@ from rdkit import Chem
 from rdkit.Chem import rdMolDescriptors
 from molmass import Formula
 from rdkit.Chem import AllChem
-from rdkit.Chem import Draw
+# --- HEADLESS COMPATIBLE RDKIT DRAWING SETUP ---
+import os
+# Force RDKit to use pure Python/Pillow drawing canvas structures
+os.environ["RDKIT_HEADLESS"] = "True" 
+
+try:
+    from rdkit.Chem import Draw
+except ImportError:
+    # Fallback configuration if standard drawing bindings have OS issues
+    import sys
+    from rdkit.Chem.Draw import IPythonConsole
+    from rdkit.Chem import Draw
 
 def parse_formula(formula_str):
     matches = re.findall(r'([A-Z][a-z]*)(\d*)', formula_str)
