@@ -40,18 +40,18 @@ with st.sidebar:
     )
     
     st.divider()
-    st.header("2. Core Reactant")
+    st.header("2. Labeled Reactant")
     hetero_smiles = st.text_input("Reactant SMILES", value="O=C(C1=CC=CN=C1)OC")
     
     st.divider()
     st.subheader("Deuterium Incorporation Table")
-    st.caption("Input position, % deuterium incorporation, max potential deuteriums, and whether that position is expected to be unreactive. Up to 10 rows max.")
+    st.caption("Input position, % deuterium incorporation, total number of hydrogens and deuteriums, and whether that position is expected to be unreactive. Up to 10 rows max.")
     
     default_deuterium_data = pd.DataFrame([
-        {"Position": "2", "Percent Deuterium (%)": 20.0, "Max Deuteriums": 1, "Unreactive": False},
-        {"Position": "4", "Percent Deuterium (%)": 40.0, "Max Deuteriums": 1, "Unreactive": False},
-        {"Position": "5", "Percent Deuterium (%)": 60.0, "Max Deuteriums": 1, "Unreactive": False},
-        {"Position": "6", "Percent Deuterium (%)": 80.0, "Max Deuteriums": 1, "Unreactive": False},
+        {"Position": "2", "%D": 20.0, "Total H/D": 1, "Unreactive": False},
+        {"Position": "4", "%D": 40.0, "Total H/D": 1, "Unreactive": False},
+        {"Position": "5", "%D": 60.0, "Total H/D": 1, "Unreactive": False},
+        {"Position": "6", "%D": 80.0, "Total H/D": 1, "Unreactive": False},
     ])
     
     edited_df = st.data_editor(
@@ -62,7 +62,7 @@ with st.sidebar:
     )
     
     if len(edited_df) > 10:
-        st.warning("⚠️ Maximum limit of 10 rows reached. Extra rows will be ignored.")
+        st.warning("Maximum limit of 10 rows reached. Extra rows will be ignored.")
         edited_df = edited_df.head(10)
     
     st.divider()
@@ -90,8 +90,8 @@ for _, row in edited_df.iterrows():
     if not pos:
         continue
     try:
-        p_val = float(row.get("Percent Deuterium (%)", 0.0)) / 100.0
-        n_val = int(row.get("Max Deuteriums", 1))
+        p_val = float(row.get("%D", 0.0)) / 100.0
+        n_val = int(row.get("Total H/D", 1))
         is_unreactive = bool(row.get("Unreactive", False))
         parsed_labels.append((pos, n_val, p_val, is_unreactive))
     except (ValueError, TypeError):
@@ -203,15 +203,15 @@ if st.sidebar.button(button_label, type="primary"):
                         except Exception:
                             st.info("Visual rendering unavailable in this environment.")
                     else:
-                        st.info("🎨 Structural layout view is offline, but all simulation math is fully functional!")
+                        st.info("Structural layout view is offline.")
                 with vis_col2:
                     st.markdown(f"**Natural Isotopic Abundance Data ({ion_mode.split(' ')[0]})**")
                     st.dataframe(df_natural.set_index('m/z'), use_container_width=True)
             else:
-                raise ValueError("Could not parse the provided Heteroarene SMILES string.")
+                raise ValueError("Could not parse the provided SMILES string.")
             
             st.divider()
-            st.header("📊 Simulated Mass Distribution Results")
+            st.header("Simulated Mass Distribution Results")
             
             # --- PHASE A: UNREACTED STARTING MATERIAL ---
             st.subheader("1. Unreacted Starting Material")
@@ -279,7 +279,7 @@ if st.sidebar.button(button_label, type="primary"):
                             
                             theoretical_profiles[target_pos] = df_product
                             
-                            with st.expander(f"Position {target_pos} Distribution", expanded=False):
+                            with st.expander(f"Position {target_pos}", expanded=False):
                                 p_col1, p_col2 = st.columns([1, 2])
                                 with p_col1:
                                     st.dataframe(df_product.set_index('m/z'), use_container_width=True)
