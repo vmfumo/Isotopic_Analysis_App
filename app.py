@@ -9,14 +9,13 @@ import analysis_engine as engine  # Hooks into your calculation module
 import matplotlib
 matplotlib.use('Agg')
 
-# Guarded extraction of RDKit drawing structures from engine safety check
-HAS_DRAW = engine.HAS_DRAW
-if HAS_DRAW:
+# Guarded extraction of RDKit drawing structures directly inside app context
+HAS_DRAW = False
+try:
     from rdkit.Chem import Draw
-
-# Configure matplotlib to render cleanly as background canvas surfaces
-import matplotlib
-matplotlib.use('Agg')
+    HAS_DRAW = True
+except ImportError:
+    HAS_DRAW = False
 
 # 1. Page Configuration Setup
 st.set_page_config(page_title="MS Isotopomer Simulator", layout="wide")
