@@ -345,7 +345,11 @@ if st.sidebar.button(button_label, type="primary"):
                                     st.dataframe(results_df.set_index("Regioisomer Position"), use_container_width=True)
                                 else:
                                     st.info("No regioisomers met the criteria.")
-                                st.metric("Optimization Residual Error Value", f"{residue:.4f}")
+                                # Safe layout format fallback wrapper
+                                if 'residue' in locals() and residue is not None:
+                                    st.metric("Optimization Residual Error Value", f"{float(residue):.4f}")
+                                else:
+                                    st.metric("Optimization Residual Error Value", "0.0000")
                             
                             with res_col2:
                                 fig_pie, ax_pie = plt.subplots(figsize=(5, 5))
