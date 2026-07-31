@@ -51,7 +51,13 @@ def get_natural_distribution(smiles, substituent_smiles=None):
     mz_list = []
     abundance_list = []
     
-    for mass, abundance in f.isotope_distribution():
+    # Try modern .isotopes property, fallback to .isotope_distribution() if legacy
+    try:
+        distribution = f.isotopes
+    except AttributeError:
+        distribution = f.isotope_distribution()
+    
+    for mass, abundance in distribution:
         mz_list.append(round(mass))
         abundance_list.append(abundance * 100.0)
         
@@ -79,7 +85,6 @@ def simulate_ms_distribution(smiles, labels, substituent_smiles=None):
         new_dist = {}
         for shift, prob in current_dist.items():
             for k in range(n + 1):
-                # Using standard math.comb to replace the broken np.math binding
                 bin_prob = (math.comb(n, k)) * (p ** k) * ((1 - p) ** (n - k))
                 total_shift = shift + k
                 new_dist[total_shift] = new_dist.get(total_shift, 0.0) + (prob * bin_prob)
