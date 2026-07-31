@@ -1,0 +1,4 @@
+libfreetype6-dev
+libxrender1
+libxext6
+libfontconfig1
