@@ -40,7 +40,7 @@ with st.sidebar:
     )
     
     st.divider()
-    st.header("2. Labeled Reactant")
+    st.header("2. Deuterated Substrate")
     hetero_smiles = st.text_input("Reactant SMILES", value="O=C(C1=CC=CN=C1)OC")
     
     st.divider()
@@ -58,7 +58,8 @@ with st.sidebar:
         default_deuterium_data,
         num_rows="dynamic",
         key="deuterium_table",
-        use_container_width=True
+        use_container_width=True,
+        help="Position: assign a number to each deuterated position. %D: input the percent deuterium incorporation at each position. Total H/D: The total number of hydrogens and deuteriums at that position (e.g. for a deuterated methyl Total H/G =3). Unreactive: check if no reaction is expected to occur at that position so it is excluded from the deconvolution."
     )
     
     if len(edited_df) > 10:
@@ -66,14 +67,15 @@ with st.sidebar:
         edited_df = edited_df.head(10)
     
     st.divider()
-    st.header("3. Radical Input")
+    st.header("3. Radical List")
     radicals_raw = st.text_area(
         "Radical SMILES List (One per line)", 
-        value="[CH2]CC\nC[CH]C"
+        value="[CH2]CC\nC[CH]C",
+        help="SMILES strings use implicit hydrogens. A radical center with implicit hydrogens must have those hydrogens written out within the brackets, e.g. [CH2]CC for n-propyl radical, not [C]CC."
     )
     
     st.divider()
-    st.header("4. Advanced Controls")
+    st.header("4. ")
     enable_nnls = st.checkbox(
         "Enable NNLS Deconvolution", 
         value=False,
@@ -217,8 +219,8 @@ if st.sidebar.button(button_label, type="primary"):
             st.divider()
             st.header("Simulated Mass Distribution Results")
             
-            # --- PHASE A: UNREACTED STARTING MATERIAL ---
-            st.subheader("1. Unreacted Starting Material")
+            # --- PHASE A: UNREACTED DEUTERATED REACTANT ---
+            st.subheader("1. Unreacted Deuterated Substrate")
             df_sm = engine.simulate_ms_distribution(hetero_smiles, [(n, p) for _, n, p, _ in parsed_labels])
             if 'Relative Abundance (%)' in df_sm.columns:
                 df_sm = df_sm.drop(columns=['Relative Abundance (%)'])
@@ -283,10 +285,15 @@ if st.sidebar.button(button_label, type="primary"):
                             
                             theoretical_profiles[target_pos] = df_product
                             
-                            with st.expander(f"Position {target_pos}", expanded=False):
+                            with st.expander(f"Position {target_pos} Distribution", expanded=False):
                                 p_col1, p_col2 = st.columns([1, 2])
                                 with p_col1:
                                     st.dataframe(df_product.set_index('m/z'), use_container_width=True)
+                                    
+                                    # Calculate and display the average number of deuteriums incorporated
+                                    total_d_inc = sum(n_i * p_i for n_i, p_i in product_labels)
+                                    st.markdown(f"**Total Deuterium Incorporation:** {total_d_inc:.2f}")
+                                    
                                 with p_col2:
                                     fig_prod = generate_locked_ms_plot(df_product, f"Position {target_pos} Regioisomer ({ion_mode.split(' ')[0]})")
                                     st.pyplot(fig_prod)
