@@ -1,26 +1,10 @@
-import os
 import re
+import numpy as np
+import pandas as pd
+from scipy.stats import binom
 from rdkit import Chem
 from rdkit.Chem import rdMolDescriptors
-from rdkit.Chem import AllChem
 from molmass import Formula
-
-# Safe import wrapper for Draw
-HAS_DRAW = False
-try:
-    from rdkit.Chem import Draw
-    HAS_DRAW = True
-except ImportError:
-    # If the OS graphics library is missing, we fail silently here so the math functions still load
-    HAS_DRAW = False
-
-try:
-    from rdkit.Chem import Draw
-except ImportError:
-    # Fallback configuration if standard drawing bindings have OS issues
-    import sys
-    from rdkit.Chem.Draw import IPythonConsole
-    from rdkit.Chem import Draw
 
 def parse_formula(formula_str):
     matches = re.findall(r'([A-Z][a-z]*)(\d*)', formula_str)

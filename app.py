@@ -2,13 +2,9 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import nnls  
-import analysis_engine as engine  
-
-# Safe extraction of Draw from engine setup
-HAS_DRAW = engine.HAS_DRAW
-if HAS_DRAW:
-    from rdkit.Chem import Draw
+from scipy.optimize import nnls  # Linear optimization package for deconvolution
+import analysis_engine as engine  # Hooks into your calculation module
+from rdkit.Chem import Draw      # RDKit vector layout rendering engine
 
 # Configure matplotlib to render cleanly as background canvas surfaces
 import matplotlib
@@ -32,7 +28,7 @@ with st.sidebar:
     )
     
     st.divider()
-    st.header("2. Core Reactant")
+    st.header("2. Deuterated Reactant")
     hetero_smiles = st.text_input("Reactant SMILES", value="O=C(C1=CC=CN=C1)OC")
     
     st.divider()
@@ -54,15 +50,14 @@ with st.sidebar:
     )
     
     if len(edited_df) > 10:
-        st.warning("⚠️ Maximum limit of 10 rows reached. Extra rows will be ignored.")
+        st.warning("Maximum limit of 10 rows reached. Extra rows will be ignored.")
         edited_df = edited_df.head(10)
     
     st.divider()
     st.header("3. Radical Input")
     radicals_raw = st.text_area(
         "Radical SMILES List (One per line)", 
-        help="Include explicit hydrogens on atoms within brackets, e.g. [CH2]CC for n-propyl radical, not [C]CC.",
-        value="[CH2]CC\nC12CC3C[C](C2)CC(C3)C1"
+        value="[CH2]CC\n[Br]"
     )
     
     st.divider()
@@ -156,7 +151,7 @@ if enable_nnls:
                     try:
                         rad_mol = engine.Chem.MolFromSmiles(rad_smiles)
                         if rad_mol:
-                            st.markdown("**Fragment Visual Representation**")
+                            st.markdown("**Radical Structure**")
                             st.image(Draw.MolToImage(engine.Chem.RemoveHs(rad_mol), size=(200, 120)), width=150)
                     except:
                         pass
@@ -177,24 +172,9 @@ if st.sidebar.button(button_label, type="primary"):
             hetero_mol = engine.Chem.MolFromSmiles(hetero_smiles)
             if hetero_mol:
                 st.subheader("Structure and Natural Abundance Profile")
-                
-                vis_col1, vis_col2 = st.columns([1, 1])
-                
-                with vis_col1:
-                    if HAS_DRAW:
-                        try:
-                            img_mol = engine.Chem.RemoveHs(hetero_mol)
-                            engine.Chem.FindPotentialStereoBonds(img_mol)
-                            mol_image = Draw.MolToImage(img_mol, size=(600, 400), kekulize=True, wedgeBonds=True)
-                            st.image(mol_image, caption="Core Structure", width=320)
-                        except Exception:
-                            st.info("Visual rendering unavailable in this environment.")
-                    else:
-                        st.info("🎨 Structural visualization is offline (Missing OS graphics libraries), but calculations are fully functional!")
-                
-                with vis_col2:
-                    st.markdown(f"**Natural Isotopic Abundance Data ({ion_mode.split(' ')[0]})**")
-                    st.dataframe(df_natural.set_index('m/z'), use_container_width=True)
+                img_mol = engine.Chem.RemoveHs(hetero_mol)
+                engine.Chem.FindPotentialStereoBonds(img_mol)
+                mol_image = Draw.MolToImage(img_mol, size=(600, 400), kekulize=True, wedgeBonds=True)
                 
                 df_natural = engine.simulate_ms_distribution(hetero_smiles, [])
                 if 'Relative Abundance (%)' in df_natural.columns:
@@ -212,7 +192,7 @@ if st.sidebar.button(button_label, type="primary"):
                 raise ValueError("Could not parse the provided Heteroarene SMILES string.")
             
             st.divider()
-            st.header("📊 Simulated Mass Distribution Results")
+            st.header("Simulated Mass Distribution Results")
             
             # --- PHASE A: UNREACTED STARTING MATERIAL ---
             st.subheader("1. Unreacted Starting Material")
@@ -248,17 +228,14 @@ if st.sidebar.button(button_label, type="primary"):
                         st.markdown(f"### Calculated Distributions for Radical: `{rad_smiles}`")
                     
                     with rad_col_img:
-                        if HAS_DRAW:
-                            try:
-                                rad_mol = engine.Chem.MolFromSmiles(rad_smiles)
-                                if rad_mol:
-                                    rad_img_mol = engine.Chem.RemoveHs(rad_mol)
-                                    rad_thumb = Draw.MolToImage(rad_img_mol, size=(200, 100), kekulize=True, wedgeBonds=True)
-                                    st.image(rad_thumb, use_container_width=False, width=140)
-                            except:
-                                pass
-                        else:
-                            st.caption("`[Structure Offline]`")
+                        try:
+                            rad_mol = engine.Chem.MolFromSmiles(rad_smiles)
+                            if rad_mol:
+                                rad_img_mol = engine.Chem.RemoveHs(rad_mol)
+                                rad_thumb = Draw.MolToImage(rad_img_mol, size=(200, 100), kekulize=True, wedgeBonds=True)
+                                st.image(rad_thumb, use_container_width=False, width=140)
+                        except:
+                            pass # Fail silently if an atypical fragment cannot be visualized, maintaining layout flow
                     
                     theoretical_profiles = {}
                     
