@@ -100,13 +100,15 @@ for _, row in edited_df.iterrows():
 # --- DATA MANIPULATION & GRAPHING HELPER FUNCTIONS ---
 
 def adjust_ion_mode_masses(df, mode_selection):
-    """Adjusts the engine's m/z outputs if Negative Ion Mode [M-H]- is chosen"""
+    """Adjusts the engine's m/z outputs based on ionization mode"""
     if df.empty or 'm/z' not in df.columns:
         return df
-    if "[M]" in mode_selection:
-        df['m/z'] = df['m/z'] - 1
+        
+    # The engine calculates neutral mass [M] by default based on the raw SMILES
+    if "[M+H]+" in mode_selection:
+        df['m/z'] = df['m/z'] + 1
     elif "[M-H]-" in mode_selection:
-        df['m/z'] = df['m/z'] - 2
+        df['m/z'] = df['m/z'] - 1
     return df
 
 def trim_high_mass_tail(df):
