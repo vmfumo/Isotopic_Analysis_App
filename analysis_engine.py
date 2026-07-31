@@ -51,15 +51,20 @@ def get_natural_distribution(smiles, substituent_smiles=None):
     mz_list = []
     abundance_list = []
     
-    # Try modern .isotopes property, fallback to .isotope_distribution() if legacy
+    # Unpack based on the environment's version pattern
     try:
-        distribution = f.isotopes
+        for isotope, abundance in f.isotopes.values():
+            mz_list.append(round(isotope.mass))
+            abundance_list.append(abundance * 100.0)
     except AttributeError:
-        distribution = f.isotope_distribution()
-    
-    for mass, abundance in distribution:
-        mz_list.append(round(mass))
-        abundance_list.append(abundance * 100.0)
+        try:
+            for mass, abundance in f.isotopes:
+                mz_list.append(round(mass))
+                abundance_list.append(abundance * 100.0)
+        except TypeError:
+            for mass, abundance in f.isotope_distribution():
+                mz_list.append(round(mass))
+                abundance_list.append(abundance * 100.0)
         
     df = pd.DataFrame({"m/z": mz_list, "Abundance": abundance_list})
     df = df.groupby("m/z", as_index=False).sum()
