@@ -39,6 +39,7 @@ def get_natural_distribution(smiles, substituent_smiles=None):
         return pd.DataFrame(columns=["m/z", "Normalized Abundance (%)"])
         
     if substituent_smiles:
+        sub = Chem.CombineMols(mol, Chem.MolFromSmiles(substituent_smiles)) if isinstance(substituent_smiles, str) else None
         sub = Chem.MolFromSmiles(substituent_smiles)
         if not sub:
             return pd.DataFrame(columns=["m/z", "Normalized Abundance (%)"])
@@ -51,20 +52,19 @@ def get_natural_distribution(smiles, substituent_smiles=None):
     mz_list = []
     abundance_list = []
     
-    # Unpack based on the environment's version pattern
+    # Unified spectrum API execution
     try:
-        for isotope, abundance in f.isotopes.values():
-            mz_list.append(round(isotope.mass))
+        spec = f.spectrum()
+        for mass, abundance in spec.items():
+            mz_list.append(round(mass))
             abundance_list.append(abundance * 100.0)
-    except AttributeError:
+    except Exception:
         try:
-            for mass, abundance in f.isotopes:
+            for mass, abundance in f.spectrum:
                 mz_list.append(round(mass))
                 abundance_list.append(abundance * 100.0)
-        except TypeError:
-            for mass, abundance in f.isotope_distribution():
-                mz_list.append(round(mass))
-                abundance_list.append(abundance * 100.0)
+        except Exception:
+            raise AttributeError("Could not extract isotope matrix from molmass object structure.")
         
     df = pd.DataFrame({"m/z": mz_list, "Abundance": abundance_list})
     df = df.groupby("m/z", as_index=False).sum()
