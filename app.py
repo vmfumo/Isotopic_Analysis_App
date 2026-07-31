@@ -34,9 +34,9 @@ with st.sidebar:
     st.header("1. Ionization Mode")
     ion_mode = st.radio(
         "Select Adduct Type",
-        options=["[M+H]+ (Positive Mode)", "[M-H]- (Negative Mode)"],
+        options=["[M+H]+ (Positive Mode)", "[M] (Neutral)", "[M-H]- (Negative Mode)"],
         index=0,
-        help="[M+H]+ shifts masses up (+1 from neutral). [M-H]- shifts masses down (-1 from neutral)."
+        help="[M+H]+ shifts masses up (+1 from neutral). [M] is exact neutral mass. [M-H]- shifts masses down (-1 from neutral)."
     )
     
     st.divider()
@@ -103,7 +103,9 @@ def adjust_ion_mode_masses(df, mode_selection):
     """Adjusts the engine's m/z outputs if Negative Ion Mode [M-H]- is chosen"""
     if df.empty or 'm/z' not in df.columns:
         return df
-    if "[M-H]-" in mode_selection:
+    if "[M]" in mode_selection:
+        df['m/z'] = df['m/z'] - 1
+    elif "[M-H]-" in mode_selection:
         df['m/z'] = df['m/z'] - 2
     return df
 
