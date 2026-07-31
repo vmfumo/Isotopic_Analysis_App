@@ -45,7 +45,9 @@ with st.sidebar:
     
     st.divider()
     st.subheader("Deuterium Incorporation Table")
-    st.caption("Input position, % deuterium incorporation, total number of hydrogens and deuteriums, and whether that position is expected to be unreactive. Up to 10 rows max.")
+    st.caption("Input position, % deuterium incorporation, total number of hydrogens and deuteriums, and whether that position is expected to be unreactive. Up to 10 rows max.",
+        help="Position: assign a number to each deuterated position. %D: input the percent deuterium incorporation at each position. Total H/D: The total number of hydrogens and deuteriums at that position (e.g. for a deuterated methyl Total H/G =3). Unreactive: check if no reaction is expected to occur at that position so it is excluded from the deconvolution."
+    )
     
     default_deuterium_data = pd.DataFrame([
         {"Position": "2", "%D": 20.0, "Total H/D": 1, "Unreactive": False},
@@ -58,8 +60,7 @@ with st.sidebar:
         default_deuterium_data,
         num_rows="dynamic",
         key="deuterium_table",
-        use_container_width=True,
-        help="Position: assign a number to each deuterated position. %D: input the percent deuterium incorporation at each position. Total H/D: The total number of hydrogens and deuteriums at that position (e.g. for a deuterated methyl Total H/G =3). Unreactive: check if no reaction is expected to occur at that position so it is excluded from the deconvolution."
+        use_container_width=True
     )
     
     if len(edited_df) > 10:
