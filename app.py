@@ -76,12 +76,13 @@ with st.sidebar:
     )
     
     st.divider()
-    st.header("4. ")
+    st.header("4. Deconvolution (optional)")
     enable_nnls = st.checkbox(
         "Enable NNLS Deconvolution", 
         value=False,
         help="Check this box to run a forward stepwise non-negative least squares regression to determine regioisomeric composition of a sample."
     )
+    st.divider()
 
 # Clean radical inputs from whitespace and drop completely empty lines
 radical_list = [line.strip() for line in radicals_raw.split("\n") if line.strip()]
@@ -220,7 +221,7 @@ if st.sidebar.button(button_label, type="primary"):
             st.divider()
             st.header("Simulated Mass Distribution Results")
             
-            # --- PHASE A: UNREACTED DEUTERATED REACTANT ---
+            # --- PHASE A: UNREACTED DEUTERATED SUBSTRATE ---
             st.subheader("1. Unreacted Deuterated Substrate")
             df_sm = engine.simulate_ms_distribution(hetero_smiles, [(n, p) for _, n, p, _ in parsed_labels])
             if 'Relative Abundance (%)' in df_sm.columns:
@@ -231,6 +232,9 @@ if st.sidebar.button(button_label, type="primary"):
             col1, col2 = st.columns([1, 2])
             with col1:
                 st.dataframe(df_sm.set_index('m/z'), use_container_width=True)
+                # Calculate and display the average number of deuteriums incorporated for the starting material
+                total_sm_d_inc = sum(n * p for _, n, p, _ in parsed_labels)
+                st.markdown(f"**Total Deuterium Incorporation:** {total_sm_d_inc:.2f}")
             with col2:
                 fig_sm = generate_locked_ms_plot(df_sm, f"Starting Material ({ion_mode.split(' ')[0]})")
                 st.pyplot(fig_sm)
