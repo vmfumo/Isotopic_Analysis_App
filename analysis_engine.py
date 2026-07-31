@@ -7,15 +7,6 @@ from rdkit import Chem
 from rdkit.Chem import rdMolDescriptors
 from rdkit.Chem import AllChem
 
-# Core runtime bootstrap loader to ensure molmass is present
-try:
-    from molmass import Formula
-except ImportError:
-    import subprocess
-    import sys
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "molmass"])
-    from molmass import Formula
-
 HAS_DRAW = False
 try:
     from rdkit.Chem import Draw
@@ -33,39 +24,70 @@ def parse_formula(formula_str):
     return element_dict
 
 def get_natural_distribution(smiles, substituent_smiles=None):
-    """Calculates the baseline natural abundance isotope profile for a compound structure."""
+    """Calculates the baseline natural abundance isotope profile for a compound structure using pure RDKit."""
     mol = Chem.MolFromSmiles(smiles)
     if not mol:
         return pd.DataFrame(columns=["m/z", "Normalized Abundance (%)"])
         
     if substituent_smiles:
-        sub = Chem.CombineMols(mol, Chem.MolFromSmiles(substituent_smiles)) if isinstance(substituent_smiles, str) else None
         sub = Chem.MolFromSmiles(substituent_smiles)
         if not sub:
             return pd.DataFrame(columns=["m/z", "Normalized Abundance (%)"])
         combined = Chem.CombineMols(mol, sub)
         mol = Chem.DeleteSubstructs(combined, Chem.MolFromSmiles("[H]"))
-        
-    formula_str = rdMolDescriptors.CalcMolFormula(mol)
-    f = Formula(formula_str)
     
+    mol = Chem.AddHs(mol)
+    
+    element_isotopes = {
+        "C": {0: 0.9893, 1: 0.0107},
+        "H": {0: 0.999885, 1: 0.000115},
+        "N": {0: 0.99632, 1: 0.00368},
+        "O": {0: 0.99757, 1: 0.00038, 2: 0.00205},
+        "F": {0: 1.0},
+        "P": {0: 1.0},
+        "S": {0: 0.9493, 1: 0.0076, 2: 0.0429, 4: 0.0002},
+        "Cl": {0: 0.7578, 2: 0.2422},
+        "Br": {0: 0.5069, 2: 0.4931},
+        "I": {0: 1.0}
+    }
+    
+    nominal_base_mass = 0
+    atom_counts = {}
+    
+    for atom in mol.GetAtoms():
+        symbol = atom.GetSymbol()
+        atom_counts[symbol] = atom_counts.get(symbol, 0) + 1
+        if symbol == "C": nominal_base_mass += 12
+        elif symbol == "H": nominal_base_mass += 1
+        elif symbol == "N": nominal_base_mass += 14
+        elif symbol == "O": nominal_base_mass += 16
+        elif symbol == "F": nominal_base_mass += 19
+        elif symbol == "P": nominal_base_mass += 31
+        elif symbol == "S": nominal_base_mass += 32
+        elif symbol == "Cl": nominal_base_mass += 35
+        elif symbol == "Br": nominal_base_mass += 79
+        elif symbol == "I": nominal_base_mass += 127
+        else: nominal_base_mass += round(atom.GetMass())
+        
+    current_envelope = {0: 1.0}
+    
+    for symbol, count in atom_counts.items():
+        iso_dict = element_isotopes.get(symbol, {0: 1.0})
+        for _ in range(count):
+            next_envelope = {}
+            for shift, prob in current_envelope.items():
+                for iso_shift, iso_prob in iso_dict.items():
+                    new_shift = shift + iso_shift
+                    next_envelope[new_shift] = next_envelope.get(new_shift, 0.0) + (prob * iso_prob)
+            current_envelope = next_envelope
+            
     mz_list = []
     abundance_list = []
-    
-    # Unified spectrum API execution
-    try:
-        spec = f.spectrum()
-        for mass, abundance in spec.items():
-            mz_list.append(round(mass))
-            abundance_list.append(abundance * 100.0)
-    except Exception:
-        try:
-            for mass, abundance in f.spectrum:
-                mz_list.append(round(mass))
-                abundance_list.append(abundance * 100.0)
-        except Exception:
-            raise AttributeError("Could not extract isotope matrix from molmass object structure.")
-        
+    for shift, prob in current_envelope.items():
+        if prob > 0.00001:
+            mz_list.append(nominal_base_mass + shift)
+            abundance_list.append(prob * 100.0)
+            
     df = pd.DataFrame({"m/z": mz_list, "Abundance": abundance_list})
     df = df.groupby("m/z", as_index=False).sum()
     
