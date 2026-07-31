@@ -4,7 +4,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import nnls  # Linear optimization package for deconvolution
 import analysis_engine as engine  # Hooks into your calculation module
-from rdkit.Chem import Draw      # RDKit vector layout rendering engine
+
+# Configure matplotlib to render cleanly as background canvas surfaces
+import matplotlib
+matplotlib.use('Agg')
+
+# Guarded extraction of RDKit drawing structures from engine safety check
+HAS_DRAW = engine.HAS_DRAW
+if HAS_DRAW:
+    from rdkit.Chem import Draw
 
 # Configure matplotlib to render cleanly as background canvas surfaces
 import matplotlib
