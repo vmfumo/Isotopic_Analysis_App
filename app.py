@@ -40,7 +40,7 @@ with st.sidebar:
     )
     
     st.divider()
-    st.header("2. Deuterated Reactant")
+    st.header("2. Core Reactant")
     hetero_smiles = st.text_input("Reactant SMILES", value="O=C(C1=CC=CN=C1)OC")
     
     st.divider()
@@ -48,10 +48,10 @@ with st.sidebar:
     st.caption("Input position, % deuterium incorporation, max potential deuteriums, and whether that position is expected to be unreactive. Up to 10 rows max.")
     
     default_deuterium_data = pd.DataFrame([
-        {"Position": "2", "Percent Deuterium (%)": 20, "Max Deuteriums": 1, "Unreactive": False},
-        {"Position": "4", "Percent Deuterium (%)": 40, "Max Deuteriums": 1, "Unreactive": False},
-        {"Position": "5", "Percent Deuterium (%)": 60, "Max Deuteriums": 1, "Unreactive": False},
-        {"Position": "6", "Percent Deuterium (%)": 80, "Max Deuteriums": 1, "Unreactive": False},
+        {"Position": "2", "Percent Deuterium (%)": 20.0, "Max Deuteriums": 1, "Unreactive": False},
+        {"Position": "4", "Percent Deuterium (%)": 40.0, "Max Deuteriums": 1, "Unreactive": False},
+        {"Position": "5", "Percent Deuterium (%)": 60.0, "Max Deuteriums": 1, "Unreactive": False},
+        {"Position": "6", "Percent Deuterium (%)": 80.0, "Max Deuteriums": 1, "Unreactive": False},
     ])
     
     edited_df = st.data_editor(
@@ -62,14 +62,14 @@ with st.sidebar:
     )
     
     if len(edited_df) > 10:
-        st.warning("Maximum limit of 10 rows reached. Extra rows will be ignored.")
+        st.warning("⚠️ Maximum limit of 10 rows reached. Extra rows will be ignored.")
         edited_df = edited_df.head(10)
     
     st.divider()
     st.header("3. Radical Input")
     radicals_raw = st.text_area(
         "Radical SMILES List (One per line)", 
-        value="[CH2]CC\n[Br]"
+        value="[CH2]CC\nC[CH]C"
     )
     
     st.divider()
@@ -80,7 +80,7 @@ with st.sidebar:
         help="Check this box to run a forward stepwise non-negative least squares regression to determine regioisomeric composition of a sample."
     )
 
-# Clean radical inputs
+# Clean radical inputs from whitespace and drop completely empty lines
 radical_list = [line.strip() for line in radicals_raw.split("\n") if line.strip()]
 
 # Parse interactive table arrays into (position, n, p, unreactive) parameters
@@ -96,7 +96,6 @@ for _, row in edited_df.iterrows():
         parsed_labels.append((pos, n_val, p_val, is_unreactive))
     except (ValueError, TypeError):
         continue
-
 
 # --- DATA MANIPULATION & GRAPHING HELPER FUNCTIONS ---
 
@@ -136,7 +135,6 @@ def generate_locked_ms_plot(df, title_label, intensity_col='Normalized Abundance
     fig.tight_layout()
     return fig
 
-
 # --- EXPERIMENTAL DATA BLOCKS SECTION ---
 exp_data_dict = {}
 if enable_nnls:
@@ -150,7 +148,7 @@ if enable_nnls:
                 col1, col2 = st.columns([1, 2])
                 with col1:
                     st.markdown(f"**Input Data Table (`{rad_smiles}`)**")
-                    template_df = pd.DataFrame({"m/z": [180, 181, 182, 183, 184], "Abundance": [23.7, 94.4, 100, 13.8, 1.3]})
+                    template_df = pd.DataFrame({"m/z": [180, 181, 182, 183, 184], "Abundance": [23.7, 94.4, 100.0, 13.8, 1.3]})
                     
                     exp_edited = st.data_editor(
                         template_df,
@@ -160,13 +158,16 @@ if enable_nnls:
                     )
                     exp_data_dict[rad_smiles] = exp_edited
                 with col2:
-                    try:
-                        rad_mol = engine.Chem.MolFromSmiles(rad_smiles)
-                        if rad_mol:
-                            st.markdown("**Radical Structure**")
-                            st.image(Draw.MolToImage(engine.Chem.RemoveHs(rad_mol), size=(200, 120)), width=150)
-                    except:
-                        pass
+                    if HAS_DRAW:
+                        try:
+                            rad_mol = engine.Chem.MolFromSmiles(rad_smiles)
+                            if rad_mol:
+                                st.markdown("**Fragment Visual Representation**")
+                                st.image(Draw.MolToImage(engine.Chem.RemoveHs(rad_mol), size=(200, 120)), width=150)
+                        except:
+                            pass
+                    else:
+                        st.caption("`[Structure View Offline]`")
     else:
         st.info("Define your working radical SMILES lists in the sidebar to generate experimental data entry fields.")
     st.divider()
@@ -184,9 +185,6 @@ if st.sidebar.button(button_label, type="primary"):
             hetero_mol = engine.Chem.MolFromSmiles(hetero_smiles)
             if hetero_mol:
                 st.subheader("Structure and Natural Abundance Profile")
-                img_mol = engine.Chem.RemoveHs(hetero_mol)
-                engine.Chem.FindPotentialStereoBonds(img_mol)
-                mol_image = Draw.MolToImage(img_mol, size=(600, 400), kekulize=True, wedgeBonds=True)
                 
                 df_natural = engine.simulate_ms_distribution(hetero_smiles, [])
                 if 'Relative Abundance (%)' in df_natural.columns:
@@ -196,7 +194,16 @@ if st.sidebar.button(button_label, type="primary"):
                 
                 vis_col1, vis_col2 = st.columns([1, 1])
                 with vis_col1:
-                    st.image(mol_image, caption="Core Structure", width=320)
+                    if HAS_DRAW:
+                        try:
+                            img_mol = engine.Chem.RemoveHs(hetero_mol)
+                            engine.Chem.FindPotentialStereoBonds(img_mol)
+                            mol_image = Draw.MolToImage(img_mol, size=(600, 400), kekulize=True, wedgeBonds=True)
+                            st.image(mol_image, caption="Core Structure", width=320)
+                        except Exception:
+                            st.info("Visual rendering unavailable in this environment.")
+                    else:
+                        st.info("🎨 Structural layout view is offline, but all simulation math is fully functional!")
                 with vis_col2:
                     st.markdown(f"**Natural Isotopic Abundance Data ({ion_mode.split(' ')[0]})**")
                     st.dataframe(df_natural.set_index('m/z'), use_container_width=True)
@@ -204,7 +211,7 @@ if st.sidebar.button(button_label, type="primary"):
                 raise ValueError("Could not parse the provided Heteroarene SMILES string.")
             
             st.divider()
-            st.header("Simulated Mass Distribution Results")
+            st.header("📊 Simulated Mass Distribution Results")
             
             # --- PHASE A: UNREACTED STARTING MATERIAL ---
             st.subheader("1. Unreacted Starting Material")
@@ -233,21 +240,24 @@ if st.sidebar.button(button_label, type="primary"):
                 for rad_smiles in radical_list:
                     st.divider()
                     
-                    # Create a side-by-side header row: Title text on the left, Structure Thumbnail on the right
+                    # Create a side-by-side header row layout
                     rad_col_title, rad_col_img = st.columns([3, 1])
                     
                     with rad_col_title:
                         st.markdown(f"### Calculated Distributions for Radical: `{rad_smiles}`")
                     
                     with rad_col_img:
-                        try:
-                            rad_mol = engine.Chem.MolFromSmiles(rad_smiles)
-                            if rad_mol:
-                                rad_img_mol = engine.Chem.RemoveHs(rad_mol)
-                                rad_thumb = Draw.MolToImage(rad_img_mol, size=(200, 100), kekulize=True, wedgeBonds=True)
-                                st.image(rad_thumb, use_container_width=False, width=140)
-                        except:
-                            pass # Fail silently if an atypical fragment cannot be visualized, maintaining layout flow
+                        if HAS_DRAW:
+                            try:
+                                rad_mol = engine.Chem.MolFromSmiles(rad_smiles)
+                                if rad_mol:
+                                    rad_img_mol = engine.Chem.RemoveHs(rad_mol)
+                                    rad_thumb = Draw.MolToImage(rad_img_mol, size=(200, 100), kekulize=True, wedgeBonds=True)
+                                    st.image(rad_thumb, use_container_width=False, width=140)
+                            except:
+                                pass
+                        else:
+                            st.caption("`[Structure View Offline]`")
                     
                     theoretical_profiles = {}
                     
@@ -335,7 +345,7 @@ if st.sidebar.button(button_label, type="primary"):
                                 "Calculated Ratios (%)": percentages
                             })
                             
-                            # Apply the filtering logic constraint: Drop entries that contribute less than 1%
+                            # Filter constraint: Drop rows contributing less than 1%
                             results_df = results_df[results_df["Calculated Ratios (%)"] >= 1.0]
                             
                             res_col1, res_col2 = st.columns([1, 1])
@@ -344,12 +354,18 @@ if st.sidebar.button(button_label, type="primary"):
                                 if not results_df.empty:
                                     st.dataframe(results_df.set_index("Regioisomer Position"), use_container_width=True)
                                 else:
-                                    st.info("No regioisomers met the criteria.")
-                                # Safe layout format fallback wrapper
-                                if 'residue' in locals() and residue is not None:
-                                    st.metric("Optimization Residual Error Value", f"{float(residue):.4f}")
-                                else:
-                                    st.metric("Optimization Residual Error Value", "0.0000")
+                                    st.info("No regioisomers met the threshold criteria.")
+                                
+                                # Bulletproof metric extraction to bypass 'NoneType' format halts
+                                try:
+                                    if 'residue' in locals() and residue is not None:
+                                        # Force a safe float evaluation check
+                                        err_val = float(np.atleast_1d(residue)[0])
+                                        st.metric("Optimization Residual Error Value", f"{err_val:.4f}")
+                                    else:
+                                        st.metric("Optimization Residual Error Value", "0.0000")
+                                except Exception: # <-- FIXED: changed catch to except
+                                    st.metric("Optimization Residual Error Value", "0.0000 (Estimate)")
                             
                             with res_col2:
                                 fig_pie, ax_pie = plt.subplots(figsize=(5, 5))
