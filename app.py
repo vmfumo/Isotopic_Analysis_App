@@ -152,7 +152,7 @@ if enable_nnls:
                 col1, col2 = st.columns([1, 2])
                 with col1:
                     st.markdown(f"**Input Data Table (`{rad_smiles}`)**")
-                    template_df = pd.DataFrame({"m/z": [180, 181, 182, 183, 184], "Abundance": [23.7, 94.4, 100.0, 13.8, 1.3]})
+                    template_df = pd.DataFrame({"m/z": [181, 182, 183, 184, 185], "Abundance": [30.0, 100, 99.6, 27.6, 2.8]})
                     
                     exp_edited = st.data_editor(
                         template_df,
