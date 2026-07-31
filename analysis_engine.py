@@ -1,15 +1,18 @@
+import os
 import re
-import numpy as np
-import pandas as pd
-from scipy.stats import binom
 from rdkit import Chem
 from rdkit.Chem import rdMolDescriptors
-from molmass import Formula
 from rdkit.Chem import AllChem
-# --- HEADLESS COMPATIBLE RDKIT DRAWING SETUP ---
-import os
-# Force RDKit to use pure Python/Pillow drawing canvas structures
-os.environ["RDKIT_HEADLESS"] = "True" 
+from molmass import Formula
+
+# Safe import wrapper for Draw
+HAS_DRAW = False
+try:
+    from rdkit.Chem import Draw
+    HAS_DRAW = True
+except ImportError:
+    # If the OS graphics library is missing, we fail silently here so the math functions still load
+    HAS_DRAW = False
 
 try:
     from rdkit.Chem import Draw

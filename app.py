@@ -1,13 +1,14 @@
-import os
-os.environ["RDKIT_HEADLESS"] = "True"  # Enforce headless rendering before RDKit initialization
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import nnls
-import analysis_engine as engine
-from rdkit.Chem import Draw
+from scipy.optimize import nnls  
+import analysis_engine as engine  
+
+# Safe extraction of Draw from engine setup
+HAS_DRAW = engine.HAS_DRAW
+if HAS_DRAW:
+    from rdkit.Chem import Draw
 
 # Configure matplotlib to render cleanly as background canvas surfaces
 import matplotlib
@@ -176,9 +177,24 @@ if st.sidebar.button(button_label, type="primary"):
             hetero_mol = engine.Chem.MolFromSmiles(hetero_smiles)
             if hetero_mol:
                 st.subheader("Structure and Natural Abundance Profile")
-                img_mol = engine.Chem.RemoveHs(hetero_mol)
-                engine.Chem.FindPotentialStereoBonds(img_mol)
-                mol_image = Draw.MolToImage(img_mol, size=(600, 400), kekulize=True, wedgeBonds=True)
+                
+                vis_col1, vis_col2 = st.columns([1, 1])
+                
+                with vis_col1:
+                    if HAS_DRAW:
+                        try:
+                            img_mol = engine.Chem.RemoveHs(hetero_mol)
+                            engine.Chem.FindPotentialStereoBonds(img_mol)
+                            mol_image = Draw.MolToImage(img_mol, size=(600, 400), kekulize=True, wedgeBonds=True)
+                            st.image(mol_image, caption="Core Structure", width=320)
+                        except Exception:
+                            st.info("Visual rendering unavailable in this environment.")
+                    else:
+                        st.info("🎨 Structural visualization is offline (Missing OS graphics libraries), but calculations are fully functional!")
+                
+                with vis_col2:
+                    st.markdown(f"**Natural Isotopic Abundance Data ({ion_mode.split(' ')[0]})**")
+                    st.dataframe(df_natural.set_index('m/z'), use_container_width=True)
                 
                 df_natural = engine.simulate_ms_distribution(hetero_smiles, [])
                 if 'Relative Abundance (%)' in df_natural.columns:
@@ -232,14 +248,17 @@ if st.sidebar.button(button_label, type="primary"):
                         st.markdown(f"### Calculated Distributions for Radical: `{rad_smiles}`")
                     
                     with rad_col_img:
-                        try:
-                            rad_mol = engine.Chem.MolFromSmiles(rad_smiles)
-                            if rad_mol:
-                                rad_img_mol = engine.Chem.RemoveHs(rad_mol)
-                                rad_thumb = Draw.MolToImage(rad_img_mol, size=(200, 100), kekulize=True, wedgeBonds=True)
-                                st.image(rad_thumb, use_container_width=False, width=140)
-                        except:
-                            pass # Fail silently if an atypical fragment cannot be visualized, maintaining layout flow
+                        if HAS_DRAW:
+                            try:
+                                rad_mol = engine.Chem.MolFromSmiles(rad_smiles)
+                                if rad_mol:
+                                    rad_img_mol = engine.Chem.RemoveHs(rad_mol)
+                                    rad_thumb = Draw.MolToImage(rad_img_mol, size=(200, 100), kekulize=True, wedgeBonds=True)
+                                    st.image(rad_thumb, use_container_width=False, width=140)
+                            except:
+                                pass
+                        else:
+                            st.caption("`[Structure Offline]`")
                     
                     theoretical_profiles = {}
                     
