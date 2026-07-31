@@ -16,6 +16,11 @@ try:
     HAS_DRAW = True
 except ImportError:
     HAS_DRAW = False
+    # Mock container to prevent NameError exceptions when Draw is called headlessly
+    class HeadlessDrawMock:
+        def __getattr__(self, name):
+            return lambda *args, **kwargs: None
+    Draw = HeadlessDrawMock()
 
 # 1. Page Configuration Setup
 st.set_page_config(page_title="MS Isotopomer Simulator", layout="wide")
